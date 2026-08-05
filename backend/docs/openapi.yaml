@@ -1,0 +1,958 @@
+openapi: 3.0.3
+info:
+  title: Forkly API
+  version: "1.0.0"
+  description: >
+    REST API for Forkly — an online food ordering & restaurant management platform.
+    All endpoints are versioned under `/api/v1` and return a consistent
+    `{ success, data, meta }` envelope on success or `{ success, error }` on failure.
+  contact:
+    name: Forkly Engineering
+
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Local development
+  - url: https://api.forkly.example.com/api/v1
+    description: Production (placeholder)
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Restaurants
+  - name: Menu
+  - name: Orders
+  - name: Reviews
+  - name: Coupons
+  - name: Categories
+  - name: Delivery Partners
+  - name: Admin
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            message: { type: string }
+            details: { type: array, items: { type: object } }
+
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [CUSTOMER, RESTAURANT_OWNER, DELIVERY_PARTNER, ADMIN] }
+        avatarUrl: { type: string, nullable: true }
+
+    AuthResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            user: { $ref: "#/components/schemas/User" }
+            accessToken: { type: string }
+            refreshToken: { type: string }
+
+    Address:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string, example: Home }
+        line1: { type: string }
+        city: { type: string }
+        state: { type: string, nullable: true }
+        postalCode: { type: string, nullable: true }
+        latitude: { type: number, nullable: true }
+        longitude: { type: number, nullable: true }
+        isDefault: { type: boolean }
+
+    FoodItemAddOn:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        price: { type: number }
+
+    FoodItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        price: { type: number }
+        isVeg: { type: boolean }
+        isAvailable: { type: boolean }
+        isPopular: { type: boolean }
+        calories: { type: integer, nullable: true }
+        addOns:
+          type: array
+          items: { $ref: "#/components/schemas/FoodItemAddOn" }
+
+    MenuCategory:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        position: { type: integer }
+        foodItems:
+          type: array
+          items: { $ref: "#/components/schemas/FoodItem" }
+
+    Restaurant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        cuisine: { type: string }
+        logoUrl: { type: string, nullable: true }
+        bannerUrl: { type: string, nullable: true }
+        addressLine: { type: string }
+        city: { type: string }
+        status: { type: string, enum: [PENDING, ACTIVE, SUSPENDED, REJECTED] }
+        priceLevel: { type: integer }
+        avgRating: { type: number }
+        reviewCount: { type: integer }
+        menuCategories:
+          type: array
+          items: { $ref: "#/components/schemas/MenuCategory" }
+
+    OrderItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nameSnapshot: { type: string }
+        priceSnapshot: { type: number }
+        quantity: { type: integer }
+
+    Payment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        method: { type: string, enum: [CARD, UPI, WALLET, CASH] }
+        status: { type: string, enum: [PENDING, PAID, FAILED, REFUNDED] }
+        amount: { type: number }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        orderNumber: { type: string, example: FRK-7X2K9A }
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, PREPARING, READY, PICKED_UP, ON_THE_WAY, DELIVERED, CANCELLED]
+        subtotal: { type: number }
+        discount: { type: number }
+        deliveryFee: { type: number }
+        tax: { type: number }
+        total: { type: number }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
+        payment: { $ref: "#/components/schemas/Payment" }
+
+    Review:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    Coupon:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: FORK20 }
+        description: { type: string, nullable: true }
+        discountType: { type: string, enum: [PERCENTAGE, FLAT, FREE_DELIVERY] }
+        value: { type: number }
+        isActive: { type: boolean }
+
+    Category:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        icon: { type: string, nullable: true }
+        restaurantCount: { type: integer }
+
+    DeliveryPartner:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        vehicleType: { type: string }
+        status: { type: string, enum: [PENDING, ACTIVE, SUSPENDED] }
+        isAvailable: { type: boolean }
+        rating: { type: number }
+        totalDeliveries: { type: integer }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated but not permitted to perform this action
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [Auth]
+      summary: Health check
+      security: []
+      responses:
+        "200": { description: API is healthy }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                phone: { type: string }
+                role: { type: string, enum: [CUSTOMER, RESTAURANT_OWNER, DELIVERY_PARTNER] }
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "409": { description: Email already registered }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new access/refresh token pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties: { refreshToken: { type: string } }
+      responses:
+        "200": { description: New token pair issued }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request a password reset email (mock)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties: { email: { type: string, format: email } }
+      responses:
+        "200": { description: Always returns success to avoid leaking account existence }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/User" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/me:
+    patch:
+      tags: [Users]
+      summary: Update the current user's profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { name: { type: string }, phone: { type: string }, avatarUrl: { type: string } }
+      responses:
+        "200": { description: Updated profile }
+
+  /users/me/addresses:
+    get:
+      tags: [Users]
+      summary: List the current user's saved addresses
+      responses:
+        "200":
+          description: List of addresses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { type: array, items: { $ref: "#/components/schemas/Address" } } }
+    post:
+      tags: [Users]
+      summary: Add a new address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Address" }
+      responses:
+        "201": { description: Address created }
+
+  /users/me/addresses/{id}:
+    patch:
+      tags: [Users]
+      summary: Update an address
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Updated }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Users]
+      summary: Delete an address
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/me/favorites:
+    get:
+      tags: [Users]
+      summary: List favorited restaurants and food items
+      responses:
+        "200": { description: List of favorites }
+    post:
+      tags: [Users]
+      summary: Favorite a restaurant or food item
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { restaurantId: { type: string }, foodItemId: { type: string } }
+      responses:
+        "201": { description: Favorite created }
+
+  /users/me/favorites/{id}:
+    delete:
+      tags: [Users]
+      summary: Remove a favorite
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Removed }
+
+  /users/me/notifications:
+    get:
+      tags: [Users]
+      summary: List recent notifications
+      responses:
+        "200": { description: List of notifications }
+
+  /users/me/notifications/{id}/read:
+    patch:
+      tags: [Users]
+      summary: Mark a notification as read
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Updated }
+
+  /restaurants:
+    get:
+      tags: [Restaurants]
+      summary: Browse active restaurants
+      security: []
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: cuisine, in: query, schema: { type: string } }
+        - { name: minRating, in: query, schema: { type: number } }
+        - { name: priceLevel, in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: string }, example: "avgRating:desc" }
+      responses:
+        "200":
+          description: Paginated list of restaurants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Restaurant" } }
+                  meta: { $ref: "#/components/schemas/PaginationMeta" }
+    post:
+      tags: [Restaurants]
+      summary: Submit a new restaurant application (RESTAURANT_OWNER)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, cuisine, addressLine, city]
+              properties:
+                name: { type: string }
+                cuisine: { type: string }
+                addressLine: { type: string }
+                city: { type: string }
+                categoryIds: { type: array, items: { type: string } }
+      responses:
+        "201": { description: Application submitted, status PENDING }
+        "409": { description: You already have a restaurant registered }
+
+  /restaurants/me:
+    get:
+      tags: [Restaurants]
+      summary: Get the authenticated owner's own restaurant
+      responses:
+        "200": { description: Restaurant with full menu }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Restaurants]
+      summary: Update the authenticated owner's restaurant
+      responses:
+        "200": { description: Updated }
+
+  /restaurants/me/menu-categories:
+    post:
+      tags: [Menu]
+      summary: Create a menu category (e.g. "Pizzas")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string }, position: { type: integer } }
+      responses:
+        "201": { description: Menu category created }
+
+  /restaurants/me/menu-categories/{id}:
+    delete:
+      tags: [Menu]
+      summary: Delete a menu category
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }
+
+  /restaurants/me/food-items:
+    post:
+      tags: [Menu]
+      summary: Add a food item to the menu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [menuCategoryId, name, price]
+              properties:
+                menuCategoryId: { type: string }
+                name: { type: string }
+                description: { type: string }
+                price: { type: number }
+                isVeg: { type: boolean }
+                calories: { type: integer }
+                images: { type: array, items: { type: string } }
+                addOns:
+                  type: array
+                  items:
+                    type: object
+                    properties: { name: { type: string }, price: { type: number } }
+      responses:
+        "201":
+          description: Food item created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/FoodItem" } }
+
+  /restaurants/me/food-items/{id}:
+    patch:
+      tags: [Menu]
+      summary: Update a food item
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Updated }
+    delete:
+      tags: [Menu]
+      summary: Delete a food item
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }
+
+  /restaurants/me/food-items/{id}/availability:
+    patch:
+      tags: [Menu]
+      summary: Toggle a food item's availability on/off
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Availability toggled }
+
+  /restaurants/{id}/reviews:
+    get:
+      tags: [Restaurants]
+      summary: List a restaurant's reviews
+      security: []
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Paginated reviews }
+
+  /restaurants/{idOrSlug}:
+    get:
+      tags: [Restaurants]
+      summary: Get a restaurant's full detail (by id or slug) including its menu
+      security: []
+      parameters: [{ name: idOrSlug, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200":
+          description: Restaurant detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/Restaurant" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List all browse categories
+      security: []
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { type: array, items: { $ref: "#/components/schemas/Category" } } }
+    post:
+      tags: [Categories]
+      summary: Create a category (ADMIN)
+      responses:
+        "201": { description: Category created }
+
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Place a new order (CUSTOMER) — server computes all pricing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [restaurantId, addressId, paymentMethod, items]
+              properties:
+                restaurantId: { type: string }
+                addressId: { type: string }
+                paymentMethod: { type: string, enum: [CARD, UPI, WALLET, CASH] }
+                couponCode: { type: string }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [foodItemId, quantity]
+                    properties:
+                      foodItemId: { type: string }
+                      quantity: { type: integer, minimum: 1 }
+                      addOnIds: { type: array, items: { type: string } }
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/Order" } }
+        "400": { $ref: "#/components/responses/ValidationError" }
+    get:
+      tags: [Orders]
+      summary: List the current customer's orders
+      responses:
+        "200": { description: Paginated list of orders }
+
+  /orders/restaurant:
+    get:
+      tags: [Orders]
+      summary: List orders for the authenticated restaurant owner
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Paginated list of orders }
+
+  /orders/deliveries/available:
+    get:
+      tags: [Orders]
+      summary: List READY, unassigned orders available for pickup (DELIVERY_PARTNER)
+      responses:
+        "200": { description: List of available deliveries }
+
+  /orders/deliveries/mine:
+    get:
+      tags: [Orders]
+      summary: List the authenticated delivery partner's deliveries
+      responses:
+        "200": { description: Paginated list of deliveries }
+
+  /orders/{id}/claim:
+    post:
+      tags: [Orders]
+      summary: Claim a READY order for pickup (DELIVERY_PARTNER)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Order assigned to you }
+        "409": { description: Order no longer available }
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order detail (customer, restaurant owner, assigned partner, or admin)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/Order" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /orders/{id}/status:
+    patch:
+      tags: [Orders]
+      summary: Transition an order's status (restaurant drives PENDING→READY, partner drives PICKED_UP→DELIVERED)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ACCEPTED, PREPARING, READY, PICKED_UP, ON_THE_WAY, DELIVERED, CANCELLED]
+      responses:
+        "200": { description: Status updated }
+        "409": { description: Invalid status transition }
+
+  /orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel an order while it is still PENDING or ACCEPTED (CUSTOMER)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Order cancelled }
+
+  /reviews:
+    post:
+      tags: [Reviews]
+      summary: Leave a review for a restaurant (CUSTOMER)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [restaurantId, rating]
+              properties:
+                restaurantId: { type: string }
+                orderId: { type: string }
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: string }
+      responses:
+        "201":
+          description: Review created, restaurant rating recalculated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/Review" } }
+
+  /coupons/apply:
+    post:
+      tags: [Coupons]
+      summary: Preview a coupon's discount before checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, restaurantId, subtotal]
+              properties:
+                code: { type: string }
+                restaurantId: { type: string }
+                subtotal: { type: number }
+      responses:
+        "200": { description: Discount preview }
+        "400": { description: Invalid, inactive, or ineligible coupon }
+
+  /coupons:
+    get:
+      tags: [Coupons]
+      summary: List coupons (RESTAURANT_OWNER sees their own, ADMIN sees all)
+      responses:
+        "200":
+          description: List of coupons
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { type: array, items: { $ref: "#/components/schemas/Coupon" } } }
+    post:
+      tags: [Coupons]
+      summary: Create a coupon (RESTAURANT_OWNER or ADMIN)
+      responses:
+        "201": { description: Coupon created }
+
+  /coupons/{id}/toggle:
+    patch:
+      tags: [Coupons]
+      summary: Toggle a coupon active/inactive
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Toggled }
+
+  /delivery-partners/apply:
+    post:
+      tags: [Delivery Partners]
+      summary: Submit a delivery partner application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleType]
+              properties: { vehicleType: { type: string } }
+      responses:
+        "201": { description: Application submitted with status PENDING }
+
+  /delivery-partners/me:
+    get:
+      tags: [Delivery Partners]
+      summary: Get the authenticated partner's own profile
+      responses:
+        "200":
+          description: Partner profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { data: { $ref: "#/components/schemas/DeliveryPartner" } }
+
+  /delivery-partners/me/availability:
+    patch:
+      tags: [Delivery Partners]
+      summary: Toggle online/offline availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isAvailable]
+              properties: { isAvailable: { type: boolean } }
+      responses:
+        "200": { description: Availability updated }
+
+  /delivery-partners/me/location:
+    patch:
+      tags: [Delivery Partners]
+      summary: Update the partner's current GPS location
+      responses:
+        "200": { description: Location updated }
+
+  /delivery-partners/me/earnings:
+    get:
+      tags: [Delivery Partners]
+      summary: Get a 7-day earnings summary
+      responses:
+        "200": { description: Earnings summary }
+
+  /admin/stats:
+    get:
+      tags: [Admin]
+      summary: Platform-wide dashboard statistics
+      responses:
+        "200": { description: Aggregate stats }
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List and search all users
+      responses:
+        "200": { description: Paginated list of users }
+
+  /admin/users/{id}/active:
+    patch:
+      tags: [Admin]
+      summary: Suspend or reactivate a user
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Updated }
+
+  /admin/restaurants:
+    get:
+      tags: [Admin]
+      summary: List all restaurants regardless of status
+      responses:
+        "200": { description: Paginated list }
+
+  /admin/restaurants/applications:
+    get:
+      tags: [Admin]
+      summary: List pending restaurant applications
+      responses:
+        "200": { description: List of PENDING restaurants }
+
+  /admin/restaurants/{id}/review:
+    patch:
+      tags: [Admin]
+      summary: Approve or reject a restaurant application
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approve]
+              properties: { approve: { type: boolean } }
+      responses:
+        "200": { description: Restaurant status updated }
+
+  /admin/restaurants/{id}/status:
+    patch:
+      tags: [Admin]
+      summary: Directly set a restaurant's status (e.g. suspend)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Status updated }
+
+  /admin/delivery-partners/applications:
+    get:
+      tags: [Admin]
+      summary: List pending delivery partner applications
+      responses:
+        "200": { description: List of PENDING partners }
+
+  /admin/delivery-partners/{id}/review:
+    patch:
+      tags: [Admin]
+      summary: Approve or reject a delivery partner application
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Partner status updated }
+
+  /admin/orders:
+    get:
+      tags: [Admin]
+      summary: List all orders platform-wide
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Paginated list of orders }
+
+  /admin/offers:
+    get:
+      tags: [Admin]
+      summary: List all promotional offers
+      responses:
+        "200": { description: List of offers }
+    post:
+      tags: [Admin]
+      summary: Create a promotional offer/campaign
+      responses:
+        "201": { description: Offer created }
+
+  /admin/offers/{id}/toggle:
+    patch:
+      tags: [Admin]
+      summary: Toggle an offer active/inactive
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Toggled }

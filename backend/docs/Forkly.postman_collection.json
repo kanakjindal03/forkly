@@ -1,0 +1,271 @@
+{
+  "info": {
+    "name": "Forkly API",
+    "description": "Postman collection for the Forkly food ordering platform REST API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "restaurantId", "value": "" },
+    { "key": "orderId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (Customer)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Priya Nair\",\n  \"email\": \"priya@example.com\",\n  \"password\": \"Sup3rSecret!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"priya@example.com\",\n  \"password\": \"Sup3rSecret!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          }
+        },
+        { "name": "Get current user", "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" } }
+      ]
+    },
+    {
+      "name": "Restaurants",
+      "item": [
+        { "name": "Browse restaurants", "request": { "method": "GET", "url": "{{baseUrl}}/restaurants?page=1&limit=20&sort=avgRating:desc" } },
+        { "name": "Get restaurant by slug", "request": { "method": "GET", "url": "{{baseUrl}}/restaurants/basil-and-bloom" } },
+        { "name": "List restaurant reviews", "request": { "method": "GET", "url": "{{baseUrl}}/restaurants/{{restaurantId}}/reviews" } },
+        {
+          "name": "Submit restaurant application (owner)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/restaurants",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cedar & Sage\",\n  \"cuisine\": \"Mediterranean\",\n  \"addressLine\": \"9 Cedar Ave\",\n  \"city\": \"Springfield\"\n}"
+            }
+          }
+        },
+        { "name": "Get my restaurant (owner)", "request": { "method": "GET", "url": "{{baseUrl}}/restaurants/me" } },
+        {
+          "name": "Update my restaurant (owner)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/restaurants/me",
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated description\"\n}" }
+          }
+        },
+        {
+          "name": "Create menu category (owner)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/restaurants/me/menu-categories",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Desserts\",\n  \"position\": 2\n}" }
+          }
+        },
+        {
+          "name": "Create food item (owner)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/restaurants/me/food-items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"menuCategoryId\": \"<menu-category-id>\",\n  \"name\": \"Tiramisu\",\n  \"price\": 6.99,\n  \"isVeg\": true\n}"
+            }
+          }
+        },
+        { "name": "Toggle food item availability (owner)", "request": { "method": "PATCH", "url": "{{baseUrl}}/restaurants/me/food-items/<food-item-id>/availability" } }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [{ "name": "List categories", "request": { "method": "GET", "url": "{{baseUrl}}/categories" } }]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create order (customer)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"addressId\": \"<address-id>\",\n  \"paymentMethod\": \"CARD\",\n  \"couponCode\": \"FORK20\",\n  \"items\": [\n    { \"foodItemId\": \"<food-item-id>\", \"quantity\": 2, \"addOnIds\": [] }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["if (pm.response.code === 201) { pm.collectionVariables.set('orderId', pm.response.json().data.id); }"] }
+            }
+          ]
+        },
+        { "name": "List my orders (customer)", "request": { "method": "GET", "url": "{{baseUrl}}/orders" } },
+        { "name": "Get order detail", "request": { "method": "GET", "url": "{{baseUrl}}/orders/{{orderId}}" } },
+        { "name": "Cancel order (customer)", "request": { "method": "POST", "url": "{{baseUrl}}/orders/{{orderId}}/cancel" } },
+        { "name": "List restaurant orders (owner)", "request": { "method": "GET", "url": "{{baseUrl}}/orders/restaurant?status=PENDING" } },
+        {
+          "name": "Update order status (owner/partner)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/orders/{{orderId}}/status",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACCEPTED\"\n}" }
+          }
+        },
+        { "name": "List available deliveries (partner)", "request": { "method": "GET", "url": "{{baseUrl}}/orders/deliveries/available" } },
+        { "name": "Claim order (partner)", "request": { "method": "POST", "url": "{{baseUrl}}/orders/{{orderId}}/claim" } },
+        { "name": "List my deliveries (partner)", "request": { "method": "GET", "url": "{{baseUrl}}/orders/deliveries/mine" } }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Create review (customer)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"orderId\": \"{{orderId}}\",\n  \"rating\": 5,\n  \"comment\": \"Fantastic!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Coupons",
+      "item": [
+        {
+          "name": "Preview coupon",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/coupons/apply",
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"FORK20\",\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"subtotal\": 40\n}" }
+          }
+        },
+        { "name": "List coupons (owner/admin)", "request": { "method": "GET", "url": "{{baseUrl}}/coupons" } },
+        {
+          "name": "Create coupon (owner/admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/coupons",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"discountType\": \"PERCENTAGE\",\n  \"value\": 10\n}"
+            }
+          }
+        },
+        { "name": "Toggle coupon (owner/admin)", "request": { "method": "PATCH", "url": "{{baseUrl}}/coupons/<coupon-id>/toggle" } }
+      ]
+    },
+    {
+      "name": "Delivery Partners",
+      "item": [
+        {
+          "name": "Apply as delivery partner",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/delivery-partners/apply",
+            "body": { "mode": "raw", "raw": "{\n  \"vehicleType\": \"Scooter\"\n}" }
+          }
+        },
+        { "name": "Get my partner profile", "request": { "method": "GET", "url": "{{baseUrl}}/delivery-partners/me" } },
+        {
+          "name": "Toggle availability",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/delivery-partners/me/availability",
+            "body": { "mode": "raw", "raw": "{\n  \"isAvailable\": true\n}" }
+          }
+        },
+        { "name": "Get earnings summary", "request": { "method": "GET", "url": "{{baseUrl}}/delivery-partners/me/earnings" } }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "Dashboard stats", "request": { "method": "GET", "url": "{{baseUrl}}/admin/stats" } },
+        { "name": "List users", "request": { "method": "GET", "url": "{{baseUrl}}/admin/users" } },
+        { "name": "List restaurant applications", "request": { "method": "GET", "url": "{{baseUrl}}/admin/restaurants/applications" } },
+        {
+          "name": "Approve restaurant application",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/admin/restaurants/<restaurant-id>/review",
+            "body": { "mode": "raw", "raw": "{\n  \"approve\": true\n}" }
+          }
+        },
+        { "name": "List delivery partner applications", "request": { "method": "GET", "url": "{{baseUrl}}/admin/delivery-partners/applications" } },
+        { "name": "List all orders", "request": { "method": "GET", "url": "{{baseUrl}}/admin/orders" } }
+      ]
+    }
+  ]
+}
