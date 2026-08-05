@@ -1250,27 +1250,101 @@ function LandingPicker({ onPick }) {
 
 function BackButton({ onClick }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        position: "fixed",
-        bottom: 18,
-        left: 18,
-        zIndex: 9999,
-        background: "#14171F",
-        color: "#fff",
-        border: "1px solid rgba(255,255,255,0.15)",
-        borderRadius: 999,
-        padding: "10px 16px",
-        fontSize: 12.5,
-        fontWeight: 700,
-        cursor: "pointer",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      ← Switch portal
-    </button>
+    <>
+      <style>{`
+        .forkly-switch-portal {
+          position: fixed;
+          left: 18px;
+          bottom: 18px;
+          z-index: 9999;
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 10px 16px;
+          color: #ffffff;
+          background:
+            linear-gradient(
+              135deg,
+              #ff6b35,
+              #e94f20
+            );
+          border:
+            1px solid
+            rgba(255,255,255,0.3);
+          border-radius: 999px;
+          box-shadow:
+            0 12px 30px
+            rgba(126,45,18,0.28);
+          cursor: pointer;
+          font-family:
+            "Inter",
+            sans-serif;
+          font-size: 12.5px;
+          font-weight: 750;
+          transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+        }
+
+        .forkly-switch-portal:hover {
+          transform: translateY(-2px);
+          box-shadow:
+            0 16px 34px
+            rgba(126,45,18,0.35);
+        }
+
+        .forkly-switch-icon {
+          font-size: 18px;
+          line-height: 1;
+        }
+
+        @media (max-width: 768px) {
+          .forkly-switch-portal {
+            left: auto;
+            right: 13px;
+            bottom: 88px;
+            width: 44px;
+            min-width: 44px;
+            height: 44px;
+            min-height: 44px;
+            padding: 0;
+            border-radius: 14px;
+            box-shadow:
+              0 10px 25px
+              rgba(126,45,18,0.3);
+          }
+
+          .forkly-switch-label {
+            display: none;
+          }
+
+          .forkly-switch-icon {
+            font-size: 20px;
+          }
+        }
+      `}</style>
+
+      <button
+        type="button"
+        className="forkly-switch-portal"
+        onClick={onClick}
+        aria-label="Switch portal"
+        title="Switch portal"
+      >
+        <span
+          className="forkly-switch-icon"
+          aria-hidden="true"
+        >
+          ↔
+        </span>
+
+        <span className="forkly-switch-label">
+          Switch portal
+        </span>
+      </button>
+    </>
   );
 }
 

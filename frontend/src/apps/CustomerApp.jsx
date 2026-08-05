@@ -1075,15 +1075,16 @@ function Header(props) {
               </span>
             </button>
           ) : (
-            <PrimaryButton
-              theme={theme}
-              size="sm"
-              onClick={onOpenAuth}
-            >
-              Sign in
-            </PrimaryButton>
-          )}
-
+  <div className="forkly-mobile-sign-in">
+    <PrimaryButton
+      theme={theme}
+      size="sm"
+      onClick={onOpenAuth}
+    >
+      Sign in
+    </PrimaryButton>
+  </div>
+)}
           <button
             type="button"
             className="forkly-mobile-menu-btn"
@@ -6547,6 +6548,13 @@ const [addressForm, setAddressForm] = useState({
   const [cardId, setCardId] = useState(
     SAVED_CARDS[0]?.id
   );
+  const [cardDetails, setCardDetails] =
+  useState({
+    name: "",
+    number: "",
+    expiry: "",
+    cvv: "",
+  });
   const [placing, setPlacing] = useState(false);
   const [orderError, setOrderError] = useState("");
 
@@ -6648,6 +6656,70 @@ const [addressForm, setAddressForm] = useState({
     );
     return;
   }
+  if (payMethod === "card") {
+  const cardNumber =
+    cardDetails.number.replace(/\s/g, "");
+
+  if (!cardDetails.name.trim()) {
+    setOrderError(
+      "Please enter the name on the card."
+    );
+    return;
+  }
+
+  if (!/^\d{16}$/.test(cardNumber)) {
+    setOrderError(
+      "Please enter a valid 16-digit card number."
+    );
+    return;
+  }
+
+  if (
+    !/^\d{2}\/\d{2}$/.test(
+      cardDetails.expiry
+    )
+  ) {
+    setOrderError(
+      "Please enter the expiry date as MM/YY."
+    );
+    return;
+  }
+
+  const [monthText, yearText] =
+    cardDetails.expiry.split("/");
+
+  const expiryMonth = Number(monthText);
+  const expiryYear = Number(yearText);
+  const currentDate = new Date();
+  const currentMonth =
+    currentDate.getMonth() + 1;
+  const currentYear =
+    currentDate.getFullYear() % 100;
+
+  if (
+    expiryMonth < 1 ||
+    expiryMonth > 12 ||
+    expiryYear < currentYear ||
+    (expiryYear === currentYear &&
+      expiryMonth < currentMonth)
+  ) {
+    setOrderError(
+      "Please enter a valid future expiry date."
+    );
+    return;
+  }
+
+  if (
+    !/^\d{3,4}$/.test(
+      cardDetails.cvv
+    )
+  ) {
+    setOrderError(
+      "Please enter a valid CVV."
+    );
+    return;
+  }
+}
 
   setPlacing(true);
   setOrderError("");
@@ -6894,19 +6966,225 @@ const [addressForm, setAddressForm] = useState({
                 );
               })}
               {payMethod === "card" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4, marginLeft: 8 }}>
-                  {SAVED_CARDS.map((c) => (
-                    <button key={c.id} onClick={() => setCardId(c.id)} style={{
-                      display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12,
-                      border: `1px solid ${cardId === c.id ? theme.primary : theme.border}`, background: theme.card, cursor: "pointer", fontFamily: FONT_STACK,
-                    }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700 }}>{c.brand}</span>
-                      <span style={{ fontSize: 12.5, color: theme.textMuted }}>•••• {c.last4}</span>
-                      <span style={{ fontSize: 11.5, color: theme.textFaint, marginLeft: "auto" }}>Exp {c.exp}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      marginTop: 4,
+      padding: 16,
+      background: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: 14,
+    }}
+  >
+    <div>
+      <label
+        style={{
+          display: "block",
+          marginBottom: 6,
+          color: theme.textMuted,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        Name on card
+      </label>
+
+      <input
+        type="text"
+        value={cardDetails.name}
+        placeholder="Akshay Sharma"
+        autoComplete="cc-name"
+        onChange={(event) =>
+          setCardDetails((current) => ({
+            ...current,
+            name: event.target.value,
+          }))
+        }
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "11px 12px",
+          background: theme.bgAlt,
+          color: theme.text,
+          border: `1px solid ${theme.border}`,
+          borderRadius: 10,
+          outline: "none",
+          fontFamily: FONT_STACK,
+        }}
+      />
+    </div>
+
+    <div>
+      <label
+        style={{
+          display: "block",
+          marginBottom: 6,
+          color: theme.textMuted,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        Card number
+      </label>
+
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="cc-number"
+        value={cardDetails.number}
+        placeholder="1234 5678 9012 3456"
+        onChange={(event) => {
+          const digits =
+            event.target.value
+              .replace(/\D/g, "")
+              .slice(0, 16);
+
+          const formatted =
+            digits
+              .replace(
+                /(\d{4})(?=\d)/g,
+                "$1 "
+              );
+
+          setCardDetails((current) => ({
+            ...current,
+            number: formatted,
+          }));
+        }}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "11px 12px",
+          background: theme.bgAlt,
+          color: theme.text,
+          border: `1px solid ${theme.border}`,
+          borderRadius: 10,
+          outline: "none",
+          fontFamily: FONT_STACK,
+        }}
+      />
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(2, minmax(0, 1fr))",
+        gap: 10,
+      }}
+    >
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: 6,
+            color: theme.textMuted,
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          Expiry date
+        </label>
+
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="cc-exp"
+          value={cardDetails.expiry}
+          placeholder="MM/YY"
+          onChange={(event) => {
+            const digits =
+              event.target.value
+                .replace(/\D/g, "")
+                .slice(0, 4);
+
+            const formatted =
+              digits.length > 2
+                ? `${digits.slice(
+                    0,
+                    2
+                  )}/${digits.slice(2)}`
+                : digits;
+
+            setCardDetails(
+              (current) => ({
+                ...current,
+                expiry: formatted,
+              })
+            );
+          }}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "11px 12px",
+            background: theme.bgAlt,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 10,
+            outline: "none",
+            fontFamily: FONT_STACK,
+          }}
+        />
+      </div>
+
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: 6,
+            color: theme.textMuted,
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          CVV
+        </label>
+
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="cc-csc"
+          value={cardDetails.cvv}
+          placeholder="123"
+          onChange={(event) =>
+            setCardDetails(
+              (current) => ({
+                ...current,
+                cvv: event.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 4),
+              })
+            )
+          }
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "11px 12px",
+            background: theme.bgAlt,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 10,
+            outline: "none",
+            fontFamily: FONT_STACK,
+          }}
+        />
+      </div>
+    </div>
+
+    <div
+      style={{
+        color: theme.textFaint,
+        fontSize: 11.5,
+        lineHeight: 1.5,
+      }}
+    >
+      Demo payment only. Card details are
+      not saved or charged.
+    </div>
+  </div>
+)}
             </div>
           </div>
         </div>
@@ -10764,6 +11042,12 @@ function GlobalStyles({ theme }) {
     > .forkly-bell-wrap {
     display: none !important;
   }
+  .forkly-mobile-sign-in button {
+  padding: 9px 13px !important;
+  border-radius: 11px !important;
+  font-size: 12.5px !important;
+  white-space: nowrap;
+}
 
   .forkly-header-inner {
     min-height: 64px !important;
@@ -12931,7 +13215,106 @@ if (initialLoading || restaurantsLoading) {    return (
   } else if (view === "restaurant" && selectedRestaurant) {
     page = <RestaurantDetailPage theme={theme} restaurant={selectedRestaurant} navigate={navigate} addToCart={addToCart} cart={cart} favorites={favorites} toggleFavorite={toggleFavorite} openCart={() => setShowCart(true)} />;
   } else if (view === "checkout") {
-    page = <CheckoutPage theme={theme} cart={cart} couponCode={couponCode} navigate={navigate} placeOrder={placeOrder} />;
+  if (!isAuthed) {
+    page = (
+      <div
+        style={{
+          maxWidth: 520,
+          margin: "0 auto",
+          padding: "72px 20px 100px",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 24,
+            padding: "38px 28px",
+            boxShadow: theme.shadowSoft,
+          }}
+        >
+          <div
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: 18,
+              margin: "0 auto 18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: theme.primary,
+              background: theme.primarySoft,
+            }}
+          >
+            <Lock size={26} />
+          </div>
+
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 25,
+              fontWeight: 800,
+            }}
+          >
+            Sign in to checkout
+          </h1>
+
+          <p
+            style={{
+              color: theme.textMuted,
+              fontSize: 14,
+              lineHeight: 1.6,
+              margin: "12px 0 24px",
+            }}
+          >
+            Please sign in to place your order.
+            Your cart will remain ready for you.
+          </p>
+
+          <PrimaryButton
+            theme={theme}
+            full
+            size="lg"
+            onClick={() =>
+              setShowAuth(true)
+            }
+          >
+            Sign in or create account
+          </PrimaryButton>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate("restaurants")
+            }
+            style={{
+              marginTop: 16,
+              border: "none",
+              background: "transparent",
+              color: theme.textMuted,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: FONT_STACK,
+            }}
+          >
+            Continue browsing restaurants
+          </button>
+        </div>
+      </div>
+    );
+  } else {
+    page = (
+      <CheckoutPage
+        theme={theme}
+        cart={cart}
+        couponCode={couponCode}
+        navigate={navigate}
+        placeOrder={placeOrder}
+      />
+    );
+  }
   } else if (view === "tracking") {
     page = <OrderTrackingPage theme={theme} order={activeOrder} navigate={navigate} refreshOrder={refreshOrder} />;
   } else if (view === "orders") {
